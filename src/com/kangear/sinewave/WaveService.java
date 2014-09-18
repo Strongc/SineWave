@@ -65,19 +65,19 @@ public class WaveService {
         return generatedSnd;
     }
     
-    private final float          INFRARED_NEC_1_HIGH_WIDTH = 0.56f ;
-    private final float           INFRARED_NEC_1_LOW_WIDTH = 0.565f;
-    private final float          INFRARED_NEC_0_HIGH_WIDTH = 1.69f ; // 2.25 - 0.56
-    private final float           INFRARED_NEC_0_LOW_WIDTH = 0.56f ;
-    private final float INFRARED_NES_LEADERCODE_HIGH_WIDTH = 9.0f  ;
-    private final float  INFRARED_NES_LEADERCODE_LOW_WIDTH = 4.50f ;
-    private final float    INFRARED_NES_STOPBIT_HIGH_WIDTH = 0.56f ;
+    private final float          INFRARED_1_HIGH_WIDTH = 0.56f ;
+    private final float           INFRARED_1_LOW_WIDTH = 1.69f;
+    private final float          INFRARED_0_HIGH_WIDTH = 0.56f ; // 2.25 - 0.56
+    private final float           INFRARED_0_LOW_WIDTH = 0.565f ;
+    private final float INFRARED_LEADERCODE_HIGH_WIDTH = 9.0f  ;
+    private final float  INFRARED_LEADERCODE_LOW_WIDTH = 4.50f ;
+    private final float    INFRARED_STOPBIT_HIGH_WIDTH = 0.56f ;
     
     
     byte[] getLow() {
     	//(1.125-0.56) + 0.56
-    	//INFRARED_NEC_0_HIGH_WIDTH  1.69 // 2.25 - 0.56
-    	//INFRARED_NEC_0_LOW_WIDTH   0.56
+    	//INFRARED_0_HIGH_WIDTH  0.56
+    	//INFRARED_0_LOW_WIDTH   0.565 // 1.125 - 0.56 
     	byte[] one = genTone(0.56, 1);
     	byte[] two = genTone(1.125-0.56, 0);
     	byte[] combined = new byte[one.length + two.length];
@@ -89,8 +89,8 @@ public class WaveService {
     
     byte[] getHigh() {
     	//0.56ms + (2.25 - 0.56)
-    	//INFRARED_NEC_1_HIGH_WIDTH  0.56
-    	//INFRARED_NEC_1_LOW_WIDTH   0.565 // 1.125 - 0.56
+    	//INFRARED_1_HIGH_WIDTH  0.56
+    	//INFRARED_1_LOW_WIDTH   1.69 // 2.25 - 0.56
     	byte[] one = genTone(0.56, 1);
     	byte[] two = genTone(2.25-0.56, 0);
     	byte[] combined = new byte[one.length + two.length];
@@ -133,8 +133,8 @@ public class WaveService {
      */
     byte[] getleaderCode() {
     	//9.0ms + 4.50ms Infrared
-    	//INFRARED_NES_LEADERCODE_HIGH_WIDTH  9.0
-    	//INFRARED_NES_LEADERCODE_LOW_WIDTH   4.50
+    	//INFRARED_LEADERCODE_HIGH_WIDTH  9.0
+    	//INFRARED_LEADERCODE_LOW_WIDTH   4.50
     	byte[] one = genTone(5.0, 1);
     	byte[] two = genTone(4.50, 0);
     	byte[] combined = new byte[one.length + two.length];
@@ -216,7 +216,7 @@ public class WaveService {
      */
     byte[] getStopBit() {
     	//0.56ms
-    	//INFRARED_NES_STOPBIT_HIGH_WIDTH    0.56
+    	//INFRARED_STOPBIT_HIGH_WIDTH    0.56
     	return genTone(0.56, 1);
     }
 }
