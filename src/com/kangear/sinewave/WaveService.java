@@ -2,7 +2,11 @@ package com.kangear.sinewave;
 
 import java.util.ArrayList;
 
+import android.util.Log;
+
 public class WaveService {
+	private String LOG_TAG = "WaveService";
+	private boolean mDebug = true;
     private final int duration = 10; // seconds
     private final int sampleRate = 44100;
     private int numSamples = duration * sampleRate;
@@ -70,10 +74,10 @@ public class WaveService {
     private final float    INFRARED_NES_STOPBIT_HIGH_WIDTH = 0.56f ;
     
     
-    byte[] getHigh() {
-    	//0.56ms + (1.125 - 0.56)
-    	//INFRARED_NEC_1_HIGH_WIDTH  0.56
-    	//INFRARED_NEC_1_LOW_WIDTH   0.565 // 1.125 - 0.56
+    byte[] getLow() {
+    	//(1.125-0.56) + 0.56
+    	//INFRARED_NEC_0_HIGH_WIDTH  1.69 // 2.25 - 0.56
+    	//INFRARED_NEC_0_LOW_WIDTH   0.56
     	byte[] one = genTone(0.56, 1);
     	byte[] two = genTone(1.125-0.56, 0);
     	byte[] combined = new byte[one.length + two.length];
@@ -83,12 +87,12 @@ public class WaveService {
     	return combined;
     }
     
-    byte[] getLow() {
-    	//(2.25-0.56) + 0.56
-    	//INFRARED_NEC_0_HIGH_WIDTH  1.69 // 2.25 - 0.56
-    	//INFRARED_NEC_0_LOW_WIDTH   0.56
-    	byte[] one = genTone(2.25 - 0.56, 1);
-    	byte[] two = genTone(0.56, 0);
+    byte[] getHigh() {
+    	//0.56ms + (2.25 - 0.56)
+    	//INFRARED_NEC_1_HIGH_WIDTH  0.56
+    	//INFRARED_NEC_1_LOW_WIDTH   0.565 // 1.125 - 0.56
+    	byte[] one = genTone(0.56, 1);
+    	byte[] two = genTone(2.25-0.56, 0);
     	byte[] combined = new byte[one.length + two.length];
 
     	System.arraycopy(one,0,combined,0         ,one.length);
@@ -100,6 +104,7 @@ public class WaveService {
     
     //                   0x0707         0x05
     byte[] getWave(short userCode, byte dataCode) {
+    	if(mDebug) Log.d(LOG_TAG, "userCode = 0x" + Integer.toHexString(userCode) + " dataCode = 0x" + Integer.toHexString(dataCode));
     	ArrayList<byte[]> wave_list = new ArrayList<byte[]>();
     	int totalLength = 0;
     	
@@ -130,7 +135,7 @@ public class WaveService {
     	//9.0ms + 4.50ms Infrared
     	//INFRARED_NES_LEADERCODE_HIGH_WIDTH  9.0
     	//INFRARED_NES_LEADERCODE_LOW_WIDTH   4.50
-    	byte[] one = genTone(9.0, 1);
+    	byte[] one = genTone(5.0, 1);
     	byte[] two = genTone(4.50, 0);
     	byte[] combined = new byte[one.length + two.length];
 
@@ -147,11 +152,12 @@ public class WaveService {
     byte[] getUserCodeToWave(short userCode) {
     	ArrayList<byte[]> wave_list = new ArrayList<byte[]>();
     	int totalLength = 0;
-    	
-    	for(int i=0; i<16; ++i) {
+    	for(int i=0; i<16; ++i) {             // 取最高位
     		if(((userCode >> i) & 0x1) == 1) { // 1
     			wave_list.add(getHigh());
+    			Log.i(LOG_TAG, "1");
     		} else {                           // 0
+    			Log.i(LOG_TAG, "0");
     			wave_list.add(getLow());
     		}
     		totalLength += wave_list.get(i).length;	
@@ -175,8 +181,8 @@ public class WaveService {
     byte[] getDataCodeToWave(byte dataCode) {
     	ArrayList<byte[]> wave_list = new ArrayList<byte[]>();
     	int totalLength = 0;
-    	
-    	for(int i=0; i<8; ++i) {               // sign-and-magnitude
+    	                                       // 取最高位
+    	for(int i=0; i<8; ++i) {              // sign-and-magnitude
     		if(((dataCode >> i) & 0x1) == 1) { // 1
     			wave_list.add(getHigh());
     		} else {                           // 0
@@ -184,19 +190,18 @@ public class WaveService {
     		}
     		totalLength += wave_list.get(i).length;	
     	}
-    	
-    	for(int i=0; i<8; ++i) {               // ones'complement
+    	                                       // 取最高位
+    	for(int i=0; i<8; ++i) {              // ones'complement
     		if(((dataCode >> i) & 0x1) == 1) { // 1
     			wave_list.add(getLow());
     		} else {                           // 0
     			wave_list.add(getHigh());
     		}
-    		totalLength += wave_list.get(i).length;	
+    		totalLength += wave_list.get(8 + i).length;	
     	}
     	
     	int currentPosition = 0;
     	byte userCodeWaveArray[] = new byte[totalLength];
-
     	for(byte[] byteArray : wave_list) {
     		System.arraycopy(byteArray,0,userCodeWaveArray,currentPosition        ,byteArray.length);
     		currentPosition += byteArray.length;
