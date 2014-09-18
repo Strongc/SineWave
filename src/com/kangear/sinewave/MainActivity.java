@@ -68,12 +68,12 @@ public class MainActivity extends Activity {
     }
 
     void playSound(){
-    	int length = mWaveService.getWave((short)0x707, (byte)0x05).length;
+    	byte[] dst = mWaveService.getWave((short)0x707, (byte)0x05);
         final AudioTrack audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC,
                 sampleRate, AudioFormat.CHANNEL_OUT_MONO,
-                AudioFormat.ENCODING_PCM_16BIT, length,
+                AudioFormat.ENCODING_PCM_16BIT, dst.length,
                 AudioTrack.MODE_STATIC);
-        audioTrack.write(mWaveService.getWave((short)0x707, (byte)0x05), 0, length);
+        audioTrack.write(dst, 0, dst.length);
         audioTrack.play();
     }
 
