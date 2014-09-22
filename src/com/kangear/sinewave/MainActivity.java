@@ -17,7 +17,10 @@
 package com.kangear.sinewave;
 
 import android.app.Activity;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
@@ -26,16 +29,18 @@ import android.os.Handler;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
+import android.widget.Toast;
 
 public class MainActivity extends Activity {
 	final String LOG_TAG = "MainActivity";
-    private final int sampleRate = 44100;
+    private final boolean mDebug = false;
     
     WaveService mWaveService = new WaveService();
     TextView mTextViewLength = null;
     
     int currentVolume = 0;
     boolean isHeadsetOn;
+    boolean isHeadsetConnected;
 
     Handler handler = new Handler();
 
@@ -47,24 +52,17 @@ public class MainActivity extends Activity {
         mTextViewLength = (TextView) this.findViewById(R.id.textview_length);
     }
     
-    @SuppressWarnings("deprecation")
 	@Override
     protected void onResume() {
         super.onResume();
-        AudioManager mAudioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
-        isHeadsetOn = mAudioManager.isWiredHeadsetOn();
-        currentVolume = mAudioManager
-    			.getStreamVolume(AudioManager.STREAM_MUSIC);
+        startPlayback();
         
-        /* set headset stream music volume*/
-		mAudioManager.setStreamVolume(AudioManager.STREAM_MUSIC, mAudioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC), 0);
     }
     
     @Override
 	protected void onPause() {
 		super.onPause();
-		AudioManager mAudioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
-		mAudioManager.setStreamVolume(AudioManager.STREAM_MUSIC, currentVolume, 0);
+		stopPlayback();
 	}
 
 	public void onClick(View v) {
@@ -86,7 +84,7 @@ public class MainActivity extends Activity {
     void playSound(){
     	byte[] dst = mWaveService.getWave((short)0x00ff, (byte)0x28);
         final AudioTrack audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC,
-                sampleRate, AudioFormat.CHANNEL_OUT_MONO,
+        		WaveService.sampleRate, AudioFormat.CHANNEL_OUT_MONO,
                 AudioFormat.ENCODING_PCM_16BIT, dst.length,
                 AudioTrack.MODE_STATIC);
         Log.d(LOG_TAG, "length=" + dst.length);
@@ -104,4 +102,89 @@ public class MainActivity extends Activity {
 //        audioTrack.write(dst, 0, dst.length);
 //        audioTrack.play();
 //    }
+    
+    
+    
+    
+    private void startPlayback() {  
+        registerHeadsetPlugReceiver();
+    }  
+      
+    private void stopPlayback() {  
+    	updateSettings(false);
+        unregisterReceiver();
+    } 
+    
+    /**
+     * FSM:状态机
+     * front && plugin    updateSettings
+     * front && unplugin  updateSettings
+     */
+    void updateSettings(boolean isFront) {
+    	AudioManager mAudioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+    	
+		if (isFront && isHeadsetConnected) {
+			/* backup current volume */
+			currentVolume = mAudioManager
+					.getStreamVolume(AudioManager.STREAM_MUSIC);
+
+			/* set headset stream music volume */
+			mAudioManager
+					.setStreamVolume(AudioManager.STREAM_MUSIC, mAudioManager
+							.getStreamMaxVolume(AudioManager.STREAM_MUSIC), 0);
+
+		} else if (!isFront && isHeadsetConnected) {
+			/* back volume */
+			mAudioManager.setStreamVolume(AudioManager.STREAM_MUSIC,
+					currentVolume, 0);
+
+		} else if (isFront && !isHeadsetConnected) {
+			// do nothing
+
+		} else if (!isFront && !isHeadsetConnected) {
+			// do nothing
+    		
+    	} else {
+			Log.e(LOG_TAG, "State error!");
+			Toast.makeText(
+					this,
+					"State error! isFront:" + String.valueOf(isFront)
+							+ " isHeadsetConnected:"
+							+ String.valueOf(isHeadsetConnected),
+					Toast.LENGTH_SHORT).show();
+    	}
+    }
+    
+    HeadsetPlugReceiver headsetPlugReceiver; 
+    private void registerHeadsetPlugReceiver(){
+    	headsetPlugReceiver  = new HeadsetPlugReceiver();
+    	IntentFilter  filter = new IntentFilter();
+    	filter.addAction("android.intent.action.HEADSET_PLUG");
+    	registerReceiver(headsetPlugReceiver, filter);
+    }
+    
+    private void unregisterReceiver(){
+    	this.unregisterReceiver(headsetPlugReceiver);
+    }
+    
+    public class HeadsetPlugReceiver extends BroadcastReceiver {
+
+    	@Override
+    	public void onReceive(Context context, Intent intent) {
+    		
+    			if(intent.hasExtra("state")){
+    				if(intent.getIntExtra("state", 0)==0){
+    					if(mDebug) Log.d(LOG_TAG, "headset not connected");
+    					isHeadsetConnected = false;
+    					updateSettings(true);
+    				}
+    				else if(intent.getIntExtra("state", 0)==1){
+    					if(mDebug) Log.d(LOG_TAG, "headset  connected");
+    					isHeadsetConnected = true;
+    					updateSettings(true);
+    				}
+    			}
+    	}
+
+    }
 }

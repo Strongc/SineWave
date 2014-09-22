@@ -24,7 +24,7 @@ public class WaveService {
 	private String LOG_TAG = "WaveService";
 	private boolean mDebug = true;
     private final int duration = 10; // seconds
-    private final int sampleRate = 44100;
+    public static final int sampleRate = 44100;
     private int numSamples = duration * sampleRate;
     private final double sample[] = new double[numSamples];
     private final double freqOfTone = 200000; // hz  200000=>20khz(50us) 最高
