@@ -206,6 +206,7 @@ public class WaveService {
         wave_list.add(getUserCodeToWave(userCode));
         wave_list.add(getDataCodeToWave(dataCode));
         wave_list.add(getStopBit());
+        wave_list.add(getRepeatCode());
         wave_list.add(getTou());
         
         for( byte[] byteTmp : wave_list)
@@ -315,5 +316,30 @@ public class WaveService {
         //0.56ms
         //INFRARED_STOPBIT_HIGH_WIDTH    0.56
         return genTone(0.56, 1);
+    }
+    
+    private byte[] getRepeatCode() {
+    	//9.0ms(high) + 2.25ms(low) + 0.56ms(high)
+        ArrayList<byte[]> waveList = new ArrayList<byte[]>();
+        int totalLength = 0;
+        
+        waveList.add(genTone(110, 0));          // 110ms  0
+        waveList.add(genTone(9.00, 1));         // 9.00ms 1
+        waveList.add(genTone(2.25, 0));         // 2.25ms 0    
+        waveList.add(genTone(0.56, 1));         // 0.56ms 1
+        
+        
+        for( byte[] byteTmp : waveList)
+            totalLength += byteTmp.length;
+        
+        int currentPosition = 0;
+        byte repeatCodeArray[] = new byte[totalLength];
+
+        for(byte[] byteArray : waveList) {
+            System.arraycopy(byteArray,0,repeatCodeArray,currentPosition        ,byteArray.length);
+            currentPosition += byteArray.length;
+        }
+        
+        return repeatCodeArray;
     }
 }
