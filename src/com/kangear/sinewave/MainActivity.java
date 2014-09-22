@@ -66,47 +66,19 @@ public class MainActivity extends Activity {
     }
 
     public void onClick(View v) {
-        if(isHeadsetConnected) {
-            // Use a new tread as this can take a while
-            final Thread thread = new Thread(new Runnable() {
-                public void run() {
-                    handler.post(new Runnable() {
-    
-                        public void run() {
-                            playSound();
-                        }
-                    });
-                }
-            });
-            thread.start();
-        }
-    }
+    	switch (v.getId()) {
+		case R.id.volume_add_button:
+			mWaveService.sendSignal((short)0x00ff, (byte)0x28);
+			break;
+		case R.id.volume_sub_button:
+			mWaveService.sendSignal((short)0x00ff, (byte)0x01);
+			break;
+			
+		default:
+			break;
+		}
 
-
-    void playSound(){
-        byte[] dst = mWaveService.getWave((short)0x00ff, (byte)0x28);
-        final AudioTrack audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC,
-                WaveService.sampleRate, AudioFormat.CHANNEL_OUT_MONO,
-                AudioFormat.ENCODING_PCM_16BIT, dst.length,
-                AudioTrack.MODE_STATIC);
-        Log.d(LOG_TAG, "length=" + dst.length);
-        mTextViewLength.setText(String.valueOf(dst.length));
-        audioTrack.write(dst, 0, dst.length);
-        audioTrack.play();
     }
-    
-//    void playSound2(){
-//        byte[] dst = mWaveService.getWave((short)0x707, (byte)0x05);
-//        final AudioTrack audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC,
-//                sampleRate, AudioFormat.CHANNEL_OUT_MONO,
-//                AudioFormat.ENCODING_PCM_16BIT, dst.length,
-//                AudioTrack.MODE_STATIC);
-//        audioTrack.write(dst, 0, dst.length);
-//        audioTrack.play();
-//    }
-    
-    
-    
     
     private void startPlayback() {
         registerHeadsetPlugReceiver();

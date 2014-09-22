@@ -18,13 +18,16 @@ package com.kangear.sinewave;
 
 import java.util.ArrayList;
 
+import android.media.AudioFormat;
+import android.media.AudioManager;
+import android.media.AudioTrack;
 import android.util.Log;
 
 public class WaveService {
     private String LOG_TAG = "WaveService";
     private boolean mDebug = true;
     private final int duration = 10; // seconds
-    public static final int sampleRate = 44100;
+    private final int sampleRate = 44100;
     private int numSamples = duration * sampleRate;
     private final double sample[] = new double[numSamples];
     private final double freqOfTone = 200000; // hz  200000=>20khz(50us) 最高
@@ -35,7 +38,7 @@ public class WaveService {
      * @value 1 0
      * @return
      */
-    public byte[] genTone(double time, float percent){
+    private byte[] genTone(double time, float percent){
         numSamples = (int) (time/1000 * sampleRate);
         double sample[] = new double[numSamples];
         byte generatedSnd[] = new byte[2 * numSamples];
@@ -60,7 +63,7 @@ public class WaveService {
         return generatedSnd;
     }
     
-    public byte[] genTone(){
+    private byte[] genTone(){
         // fill out the array
         for (int i = 0; i < numSamples; ++i) {
             sample[i] = Math.sin(2 * Math.PI * i / (sampleRate/freqOfTone));
@@ -81,6 +84,37 @@ public class WaveService {
         return generatedSnd;
     }
     
+    public void sendSignal(short userCode, byte dataCode) {
+    	Runnable r = new sendThread(userCode, dataCode);
+    	new Thread(r).start();
+    }
+    
+	private class sendThread implements Runnable {
+		short userCode;
+		byte dataCode;
+		
+		public sendThread(short userCode1, byte dataCode1) {
+			// store parameter for later user
+			userCode = userCode1;
+			dataCode = dataCode1;
+		}
+
+		public void run() {
+			playSound(userCode, dataCode);
+		}
+	}
+	
+    private void playSound(short userCode, byte dataCode){
+        byte[] dst = getWave(userCode, dataCode);
+        final AudioTrack audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC,
+                sampleRate, AudioFormat.CHANNEL_OUT_MONO,
+                AudioFormat.ENCODING_PCM_16BIT, dst.length,
+                AudioTrack.MODE_STATIC);
+        if(mDebug) Log.d(LOG_TAG, "length=" + dst.length);
+        audioTrack.write(dst, 0, dst.length);
+        audioTrack.play();
+    }
+    
     private final float          INFRARED_1_HIGH_WIDTH = 0.56f ;
     private final float           INFRARED_1_LOW_WIDTH = 1.69f;
     private final float          INFRARED_0_HIGH_WIDTH = 0.56f ; // 2.25 - 0.56
@@ -93,7 +127,7 @@ public class WaveService {
      * PPM wave 0
      * @return
      */
-    byte[] getLow() {
+    private byte[] getLow() {
         //(1.125-0.56) + 0.56
         //INFRARED_0_HIGH_WIDTH  0.56
         //INFRARED_0_LOW_WIDTH   0.565 // 1.125 - 0.56 
@@ -109,7 +143,7 @@ public class WaveService {
      * PPM wave 1
      * @return
      */
-    byte[] getHigh() {
+    private byte[] getHigh() {
         //0.56ms + (2.25 - 0.56)
         //INFRARED_1_HIGH_WIDTH  0.56
         //INFRARED_1_LOW_WIDTH   1.69 // 2.25 - 0.56
@@ -122,7 +156,7 @@ public class WaveService {
         return combined;
     }
     
-    byte[] getLittleHigh() {
+    private byte[] getLittleHigh() {
         byte[] one = genTone(2.25 - 0.56, 0.08f);
         byte[] two = genTone(0.56, 0);
         byte[] combined = new byte[one.length + two.length];
@@ -132,7 +166,7 @@ public class WaveService {
         return combined;
     }
     
-    byte[] getTou() {
+    private byte[] getTou() {
         ArrayList<byte[]> wave_list = new ArrayList<byte[]>();
         int totalLength = 0;
         for(int i=0; i<3; ++i) {
@@ -162,7 +196,7 @@ public class WaveService {
     //byte[] getWave(float leaderCode, float space, int userCode ) {
     
     //                   0x0707         0x05
-    byte[] getWave(short userCode, byte dataCode) {
+    private byte[] getWave(short userCode, byte dataCode) {
         if(mDebug) Log.d(LOG_TAG, "userCode = 0x" + Integer.toHexString(userCode) + " dataCode = 0x" + Integer.toHexString(dataCode));
         ArrayList<byte[]> wave_list = new ArrayList<byte[]>();
         int totalLength = 0;
@@ -193,7 +227,7 @@ public class WaveService {
      * 1.leader code
      * @return
      */
-    byte[] getleaderCode() {
+    private byte[] getleaderCode() {
         //9.0ms + 4.50ms Infrared
         //INFRARED_LEADERCODE_HIGH_WIDTH  9.0
         //INFRARED_LEADERCODE_LOW_WIDTH   4.50
@@ -212,7 +246,7 @@ public class WaveService {
      * @param userCode
      * @return
      */
-    byte[] getUserCodeToWave(short userCode) {
+    private byte[] getUserCodeToWave(short userCode) {
         ArrayList<byte[]> wave_list = new ArrayList<byte[]>();
         int totalLength = 0;
         for(int i=0; i<16; ++i) {             // 取最高位
@@ -241,7 +275,7 @@ public class WaveService {
      * @param dataCode
      * @return
      */
-    byte[] getDataCodeToWave(byte dataCode) {
+    private byte[] getDataCodeToWave(byte dataCode) {
         ArrayList<byte[]> wave_list = new ArrayList<byte[]>();
         int totalLength = 0;
                                                // 取最高位
@@ -277,7 +311,7 @@ public class WaveService {
      * 4.stop bit
      * @return
      */
-    byte[] getStopBit() {
+    private byte[] getStopBit() {
         //0.56ms
         //INFRARED_STOPBIT_HIGH_WIDTH    0.56
         return genTone(0.56, 1);

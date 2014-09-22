@@ -29,10 +29,10 @@
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context=".MainActivity" >
 
-    <LinearLayout 
-        android:orientation="horizontal"
+    <LinearLayout
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content" >
+        android:layout_height="wrap_content"
+        android:orientation="horizontal" >
 
         <TextView
             android:layout_width="wrap_content"
@@ -46,7 +46,6 @@
             android:layout_height="wrap_content"
             android:onClick="onClick"
             android:text="@string/hello_world" />
-        
     </LinearLayout>
 
     <Button
@@ -54,5 +53,19 @@
         android:layout_height="wrap_content"
         android:onClick="onClick"
         android:text="test" />
+
+    <Button
+        android:id="@+id/volume_add_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="onClick"
+        android:text="vol+" />
+
+    <Button
+        android:id="@+id/volume_sub_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="onClick"
+        android:text="vol-" />
 
 </LinearLayout>
