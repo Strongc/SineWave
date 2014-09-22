@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-<!-- Copyright (C) 2014 kangear@163.com
+<!--
+     Copyright (C) 2014 kangear@163.com
 
      Licensed under the Apache License, Version 2.0 (the "License");
      you may not use this file except in compliance with the License.
@@ -18,11 +19,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.kangear.sinewave"
     android:versionCode="1"
-    android:versionName="1.0" >
+    android:versionName="1.0" xmlns:tools="http://schemas.android.com/tools" tools:ignore="OldTargetApi">
 
     <uses-sdk
         android:minSdkVersion="8"
-        android:targetSdkVersion="17" />
+        android:targetSdkVersion="17"/>
 
     <application
         android:allowBackup="true"
@@ -39,5 +40,7 @@
             </intent-filter>
         </activity>
     </application>
+
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
 </manifest>

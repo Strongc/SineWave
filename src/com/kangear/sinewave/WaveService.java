@@ -35,7 +35,7 @@ public class WaveService {
      * @value 1 0
      * @return
      */
-    public byte[] genTone(double time, int value){
+    public byte[] genTone(double time, float percent){
     	numSamples = (int) (time/1000 * sampleRate);
     	double sample[] = new double[numSamples];
     	byte generatedSnd[] = new byte[2 * numSamples];
@@ -50,7 +50,7 @@ public class WaveService {
         int idx = 0;
         for (final double dVal : sample) {
             // scale to maximum amplitude
-            final short val = (short) (value * (dVal * 32767));
+            final short val = (short) (dVal * 32767 * percent);
             // in 16 bit wav PCM, first byte is the low order byte
             generatedSnd[idx++] = (byte) (val & 0x00ff);
             generatedSnd[idx++] = (byte) ((val & 0xff00) >>> 8);
@@ -89,7 +89,10 @@ public class WaveService {
     private final float  INFRARED_LEADERCODE_LOW_WIDTH = 4.50f ;
     private final float    INFRARED_STOPBIT_HIGH_WIDTH = 0.56f ;
     
-    
+    /**
+     * PPM wave 0
+     * @return
+     */
     byte[] getLow() {
     	//(1.125-0.56) + 0.56
     	//INFRARED_0_HIGH_WIDTH  0.56
@@ -102,7 +105,10 @@ public class WaveService {
     	System.arraycopy(two,0,combined,one.length,two.length);
     	return combined;
     }
-    
+    /**
+     * PPM wave 1
+     * @return
+     */
     byte[] getHigh() {
     	//0.56ms + (2.25 - 0.56)
     	//INFRARED_1_HIGH_WIDTH  0.56
@@ -116,6 +122,43 @@ public class WaveService {
     	return combined;
     }
     
+    byte[] getLittleHigh() {
+    	byte[] one = genTone(2.25 - 0.56, 0.08f);
+    	byte[] two = genTone(0.56, 0);
+    	byte[] combined = new byte[one.length + two.length];
+
+    	System.arraycopy(one,0,combined,0         ,one.length);
+    	System.arraycopy(two,0,combined,one.length,two.length);
+    	return combined;
+    }
+    
+    byte[] getTou() {
+    	ArrayList<byte[]> wave_list = new ArrayList<byte[]>();
+    	int totalLength = 0;
+    	for(int i=0; i<3; ++i) {
+	    	wave_list.add(genTone(10, 0));         // 10ms 0
+	    	
+	    	for(int j=1; j<4; ++j) {               // 取最高位
+	    		wave_list.add(getLittleHigh());
+	    	}
+	    	
+	    	wave_list.add(genTone(10, 0));         // 10ms 0
+    	}
+    	
+    	for( byte[] byteTmp : wave_list)
+    		totalLength += byteTmp.length;
+    	
+    	int currentPosition = 0;
+    	byte userCodeWaveArray[] = new byte[totalLength];
+
+    	for(byte[] byteArray : wave_list) {
+    		System.arraycopy(byteArray,0,userCodeWaveArray,currentPosition        ,byteArray.length);
+    		currentPosition += byteArray.length;
+    	}
+    	
+    	return userCodeWaveArray;
+    }
+    
     //byte[] getWave(float leaderCode, float space, int userCode ) {
     
     //                   0x0707         0x05
@@ -124,10 +167,13 @@ public class WaveService {
     	ArrayList<byte[]> wave_list = new ArrayList<byte[]>();
     	int totalLength = 0;
     	
+    	wave_list.add(getTou());
     	wave_list.add(getleaderCode());
     	wave_list.add(getUserCodeToWave(userCode));
     	wave_list.add(getDataCodeToWave(dataCode));
     	wave_list.add(getStopBit());
+    	wave_list.add(getTou());
+    	
     	for( byte[] byteTmp : wave_list)
     		totalLength += byteTmp.length;
 
@@ -151,12 +197,13 @@ public class WaveService {
     	//9.0ms + 4.50ms Infrared
     	//INFRARED_LEADERCODE_HIGH_WIDTH  9.0
     	//INFRARED_LEADERCODE_LOW_WIDTH   4.50
-    	byte[] one = genTone(5.0, 1);
+    	byte[] one = genTone(INFRARED_LEADERCODE_HIGH_WIDTH, 1);
     	byte[] two = genTone(4.50, 0);
     	byte[] combined = new byte[one.length + two.length];
 
     	System.arraycopy(one,0,combined,0         ,one.length);
     	System.arraycopy(two,0,combined,one.length,two.length);
+    	
     	return combined;
     }
     
