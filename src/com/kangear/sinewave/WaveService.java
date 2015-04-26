@@ -24,14 +24,24 @@ import android.media.AudioTrack;
 import android.util.Log;
 
 public class WaveService {
-    private String LOG_TAG = "WaveService";
-    private boolean mDebug = true;
+    private final String LOG_TAG = "WaveService";
+    private final boolean mDebug = true;
     private final int duration = 10; // seconds
+    /**
+     * 音频采样频率，在录音中同样会有类似参数；通俗讲是每秒进行44100次采样。
+     * 详见：http://en.wikipedia.org/wiki/44,100_Hz
+     */
     private final int sampleRate = 44100;
     private int numSamples = duration * sampleRate;
     private final double sample[] = new double[numSamples];
+    /**
+     * 音频信号的频率，红外需要38kHz的频率。
+     * 手机输出的频率一般在人耳听力中的
+     * 20~20kHz范围内，所以这里仅仅取最高频率。
+     * 该频率是指最终的信号的频率，采样率仅存在于数字音频信号生成过程中的一个概念。
+     */
     private final double freqOfTone = 200000; // hz  200000=>20khz(50us) 最高
-    
+
     private final byte generatedSnd[] = new byte[2 * numSamples];
     /**
      * @param time unit:ms
@@ -42,10 +52,21 @@ public class WaveService {
         numSamples = (int) (time/1000 * sampleRate);
         double sample[] = new double[numSamples];
         byte generatedSnd[] = new byte[2 * numSamples];
-        
+
         // fill out the array
         for (int i = 0; i < numSamples; ++i) {
-            sample[i] = Math.sin(2 * Math.PI * i / (sampleRate/freqOfTone));
+			/**
+			 * 这里用到了数学中正弦波知识，其实就是求出图中S(i)值：
+			 * http://en.wikipedia.org/wiki/File:Signal_Sampling.png
+			 *
+			 * 关于正弦波知识，详见：http://en.wikipedia.org/wiki/Sine_wave
+			 * 其中公式为：y(t) = A * sin (2πft + φ)
+			 * A: 振幅，这里为1；
+			 * f: 频率，这里为freqOfTone;
+			 * t: 时间，这里为(i/sampleRate);
+			 * φ: 初相位，这里为0；
+			 */
+            sample[i] = Math.sin(2 * Math.PI * freqOfTone * (i / sampleRate));
         }
 
         // convert to 16 bit pcm sound array
@@ -59,10 +80,10 @@ public class WaveService {
             generatedSnd[idx++] = (byte) ((val & 0xff00) >>> 8);
 
         }
-        
+
         return generatedSnd;
     }
-    
+
     private byte[] genTone(){
         // fill out the array
         for (int i = 0; i < numSamples; ++i) {
@@ -80,30 +101,31 @@ public class WaveService {
             generatedSnd[idx++] = (byte) ((val & 0xff00) >>> 8);
 
         }
-        
+
         return generatedSnd;
     }
-    
+
     public void sendSignal(short userCode, byte dataCode) {
     	Runnable r = new sendThread(userCode, dataCode);
     	new Thread(r).start();
     }
-    
+
 	private class sendThread implements Runnable {
 		short userCode;
 		byte dataCode;
-		
+
 		public sendThread(short userCode1, byte dataCode1) {
 			// store parameter for later user
 			userCode = userCode1;
 			dataCode = dataCode1;
 		}
 
+		@Override
 		public void run() {
 			playSound(userCode, dataCode);
 		}
 	}
-	
+
     private void playSound(short userCode, byte dataCode){
         byte[] dst = getWave(userCode, dataCode);
         final AudioTrack audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC,
@@ -114,7 +136,7 @@ public class WaveService {
         audioTrack.write(dst, 0, dst.length);
         audioTrack.play();
     }
-    
+
     private final float          INFRARED_1_HIGH_WIDTH = 0.56f ;
     private final float           INFRARED_1_LOW_WIDTH = 1.69f;
     private final float          INFRARED_0_HIGH_WIDTH = 0.56f ; // 2.25 - 0.56
@@ -122,7 +144,7 @@ public class WaveService {
     private final float INFRARED_LEADERCODE_HIGH_WIDTH = 9.0f  ;
     private final float  INFRARED_LEADERCODE_LOW_WIDTH = 4.50f ;
     private final float    INFRARED_STOPBIT_HIGH_WIDTH = 0.56f ;
-    
+
     /**
      * PPM wave 0
      * @return
@@ -130,7 +152,7 @@ public class WaveService {
     private byte[] getLow() {
         //(1.125-0.56) + 0.56
         //INFRARED_0_HIGH_WIDTH  0.56
-        //INFRARED_0_LOW_WIDTH   0.565 // 1.125 - 0.56 
+        //INFRARED_0_LOW_WIDTH   0.565 // 1.125 - 0.56
         byte[] one = genTone(0.56, 1);
         byte[] two = genTone(1.125-0.56, 0);
         byte[] combined = new byte[one.length + two.length];
@@ -155,7 +177,7 @@ public class WaveService {
         System.arraycopy(two,0,combined,one.length,two.length);
         return combined;
     }
-    
+
     private byte[] getLittleHigh() {
         byte[] one = genTone(2.25 - 0.56, 0.08f);
         byte[] two = genTone(0.56, 0);
@@ -165,23 +187,23 @@ public class WaveService {
         System.arraycopy(two,0,combined,one.length,two.length);
         return combined;
     }
-    
+
     private byte[] getTou() {
         ArrayList<byte[]> wave_list = new ArrayList<byte[]>();
         int totalLength = 0;
         for(int i=0; i<3; ++i) {
             wave_list.add(genTone(10, 0));         // 10ms 0
-            
+
             for(int j=1; j<4; ++j) {               // 取最高位
                 wave_list.add(getLittleHigh());
             }
-            
+
             wave_list.add(genTone(10, 0));         // 10ms 0
         }
-        
+
         for( byte[] byteTmp : wave_list)
             totalLength += byteTmp.length;
-        
+
         int currentPosition = 0;
         byte userCodeWaveArray[] = new byte[totalLength];
 
@@ -189,18 +211,18 @@ public class WaveService {
             System.arraycopy(byteArray,0,userCodeWaveArray,currentPosition        ,byteArray.length);
             currentPosition += byteArray.length;
         }
-        
+
         return userCodeWaveArray;
     }
-    
+
     //byte[] getWave(float leaderCode, float space, int userCode ) {
-    
+
     //                   0x0707         0x05
     private byte[] getWave(short userCode, byte dataCode) {
         if(mDebug) Log.d(LOG_TAG, "userCode = 0x" + Integer.toHexString(userCode) + " dataCode = 0x" + Integer.toHexString(dataCode));
         ArrayList<byte[]> wave_list = new ArrayList<byte[]>();
         int totalLength = 0;
-        
+
         wave_list.add(getTou());
         wave_list.add(getleaderCode());
         wave_list.add(getUserCodeToWave(userCode));
@@ -208,7 +230,7 @@ public class WaveService {
         wave_list.add(getStopBit());
         wave_list.add(getRepeatCode());
         wave_list.add(getTou());
-        
+
         for( byte[] byteTmp : wave_list)
             totalLength += byteTmp.length;
 
@@ -219,11 +241,11 @@ public class WaveService {
             System.arraycopy(byteArray,0,totalWaveArray,currentPosition        ,byteArray.length);
             currentPosition += byteArray.length;
         }
-        
+
         return totalWaveArray;
     }
-    
-    
+
+
     /**
      * 1.leader code
      * @return
@@ -238,10 +260,10 @@ public class WaveService {
 
         System.arraycopy(one,0,combined,0         ,one.length);
         System.arraycopy(two,0,combined,one.length,two.length);
-        
+
         return combined;
     }
-    
+
     /**
      * 2. user code
      * @param userCode
@@ -258,9 +280,9 @@ public class WaveService {
                 Log.i(LOG_TAG, "0");
                 wave_list.add(getLow());
             }
-            totalLength += wave_list.get(i).length;    
+            totalLength += wave_list.get(i).length;
         }
-        
+
         int currentPosition = 0;
         byte userCodeWaveArray[] = new byte[totalLength];
 
@@ -268,7 +290,7 @@ public class WaveService {
             System.arraycopy(byteArray,0,userCodeWaveArray,currentPosition        ,byteArray.length);
             currentPosition += byteArray.length;
         }
-        
+
         return userCodeWaveArray;
     }
     /**
@@ -286,7 +308,7 @@ public class WaveService {
             } else {                           // 0
                 wave_list.add(getLow());
             }
-            totalLength += wave_list.get(i).length;    
+            totalLength += wave_list.get(i).length;
         }
                                                // 取最高位
         for(int i=0; i<8; ++i) {              // ones'complement
@@ -295,19 +317,19 @@ public class WaveService {
             } else {                           // 0
                 wave_list.add(getHigh());
             }
-            totalLength += wave_list.get(8 + i).length;    
+            totalLength += wave_list.get(8 + i).length;
         }
-        
+
         int currentPosition = 0;
         byte userCodeWaveArray[] = new byte[totalLength];
         for(byte[] byteArray : wave_list) {
             System.arraycopy(byteArray,0,userCodeWaveArray,currentPosition        ,byteArray.length);
             currentPosition += byteArray.length;
         }
-        
+
         return userCodeWaveArray;
     }
-    
+
     /**
      * 4.stop bit
      * @return
@@ -317,21 +339,21 @@ public class WaveService {
         //INFRARED_STOPBIT_HIGH_WIDTH    0.56
         return genTone(0.56, 1);
     }
-    
+
     private byte[] getRepeatCode() {
     	//9.0ms(high) + 2.25ms(low) + 0.56ms(high)
         ArrayList<byte[]> waveList = new ArrayList<byte[]>();
         int totalLength = 0;
-        
+
         waveList.add(genTone(110, 0));          // 110ms  0
         waveList.add(genTone(9.00, 1));         // 9.00ms 1
-        waveList.add(genTone(2.25, 0));         // 2.25ms 0    
+        waveList.add(genTone(2.25, 0));         // 2.25ms 0
         waveList.add(genTone(0.56, 1));         // 0.56ms 1
-        
-        
+
+
         for( byte[] byteTmp : waveList)
             totalLength += byteTmp.length;
-        
+
         int currentPosition = 0;
         byte repeatCodeArray[] = new byte[totalLength];
 
@@ -339,7 +361,7 @@ public class WaveService {
             System.arraycopy(byteArray,0,repeatCodeArray,currentPosition        ,byteArray.length);
             currentPosition += byteArray.length;
         }
-        
+
         return repeatCodeArray;
     }
 }
