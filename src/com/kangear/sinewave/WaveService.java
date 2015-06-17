@@ -43,6 +43,20 @@ public class WaveService {
     private final double freqOfTone = 200000; // hz  200000=>20khz(50us) 最高
 
     private final byte generatedSnd[] = new byte[2 * numSamples];
+    /** Data "1" 高电平宽度 */
+    private final float          INFRARED_1_HIGH_WIDTH = 0.56f ;
+    /** Data "1" 低电平宽度 */
+    private final float           INFRARED_1_LOW_WIDTH = 1.69f;  // 2.25 - 0.56
+    /** Data "0" 高电平宽度 */
+    private final float          INFRARED_0_HIGH_WIDTH = 0.56f ;
+    /** Data "0" 低电平宽度 */
+    private final float           INFRARED_0_LOW_WIDTH = 0.565f ;// 1.125-0.56
+    /** Leader code 高电平宽度 */
+    private final float INFRARED_LEADERCODE_HIGH_WIDTH = 9.0f  ;
+    /** Leader code 低电平宽度 */
+    private final float  INFRARED_LEADERCODE_LOW_WIDTH = 4.50f ;
+    /** Stop bit 高电平宽度 */
+    private final float    INFRARED_STOPBIT_HIGH_WIDTH = 0.56f ;
     /**
      * @param time unit:ms
      * @value 1 0
@@ -137,14 +151,6 @@ public class WaveService {
         audioTrack.play();
     }
 
-    private final float          INFRARED_1_HIGH_WIDTH = 0.56f ;
-    private final float           INFRARED_1_LOW_WIDTH = 1.69f;
-    private final float          INFRARED_0_HIGH_WIDTH = 0.56f ; // 2.25 - 0.56
-    private final float           INFRARED_0_LOW_WIDTH = 0.565f ;
-    private final float INFRARED_LEADERCODE_HIGH_WIDTH = 9.0f  ;
-    private final float  INFRARED_LEADERCODE_LOW_WIDTH = 4.50f ;
-    private final float    INFRARED_STOPBIT_HIGH_WIDTH = 0.56f ;
-
     /**
      * PPM wave 0
      * @return
@@ -153,8 +159,8 @@ public class WaveService {
         //(1.125-0.56) + 0.56
         //INFRARED_0_HIGH_WIDTH  0.56
         //INFRARED_0_LOW_WIDTH   0.565 // 1.125 - 0.56
-        byte[] one = genTone(0.56, 1);
-        byte[] two = genTone(1.125-0.56, 0);
+        byte[] one = genTone(INFRARED_0_HIGH_WIDTH, 1);
+        byte[] two = genTone(INFRARED_0_LOW_WIDTH, 0);
         byte[] combined = new byte[one.length + two.length];
 
         System.arraycopy(one,0,combined,0         ,one.length);
@@ -169,8 +175,8 @@ public class WaveService {
         //0.56ms + (2.25 - 0.56)
         //INFRARED_1_HIGH_WIDTH  0.56
         //INFRARED_1_LOW_WIDTH   1.69 // 2.25 - 0.56
-        byte[] one = genTone(0.56, 1);
-        byte[] two = genTone(2.25-0.56, 0);
+        byte[] one = genTone(INFRARED_1_HIGH_WIDTH, 1);
+        byte[] two = genTone(INFRARED_1_LOW_WIDTH, 0);
         byte[] combined = new byte[one.length + two.length];
 
         System.arraycopy(one,0,combined,0         ,one.length);
@@ -179,8 +185,8 @@ public class WaveService {
     }
 
     private byte[] getLittleHigh() {
-        byte[] one = genTone(2.25 - 0.56, 0.08f);
-        byte[] two = genTone(0.56, 0);
+        byte[] one = genTone(INFRARED_1_LOW_WIDTH, 0.08f);
+        byte[] two = genTone(INFRARED_1_HIGH_WIDTH, 0);
         byte[] combined = new byte[one.length + two.length];
 
         System.arraycopy(one,0,combined,0         ,one.length);
@@ -255,7 +261,7 @@ public class WaveService {
         //INFRARED_LEADERCODE_HIGH_WIDTH  9.0
         //INFRARED_LEADERCODE_LOW_WIDTH   4.50
         byte[] one = genTone(INFRARED_LEADERCODE_HIGH_WIDTH, 1);
-        byte[] two = genTone(4.50, 0);
+        byte[] two = genTone(INFRARED_LEADERCODE_LOW_WIDTH, 0);
         byte[] combined = new byte[one.length + two.length];
 
         System.arraycopy(one,0,combined,0         ,one.length);
@@ -337,9 +343,14 @@ public class WaveService {
     private byte[] getStopBit() {
         //0.56ms
         //INFRARED_STOPBIT_HIGH_WIDTH    0.56
-        return genTone(0.56, 1);
+        return genTone(INFRARED_STOPBIT_HIGH_WIDTH, 1);
     }
 
+    /**
+     * 用于长按效果
+     * 这个方法中的参数记得是实测得来的。
+     * @return
+     */
     private byte[] getRepeatCode() {
     	//9.0ms(high) + 2.25ms(low) + 0.56ms(high)
         ArrayList<byte[]> waveList = new ArrayList<byte[]>();
